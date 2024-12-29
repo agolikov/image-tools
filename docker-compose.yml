@@ -1,0 +1,10 @@
+services:
+  image-resizer:
+    build:
+      context: .
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./data/uploads:/app/data/uploads
+      - ./data/output:/app/data/output
+      - ./data/thumbnails:/app/data/thumbnails

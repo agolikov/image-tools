@@ -1,0 +1,43 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: Image Resizer API
+  description: API to resize images into multiple sizes
+host: "localhost:5000"
+basePath: "/"
+schemes:
+  - "http"
+paths:
+  /resize:
+    post:
+      summary: Resize an input image
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: image
+          in: formData
+          type: file
+          required: true
+          description: The image file to be resized.
+        - name: sizes
+          in: formData
+          type: array
+          items:
+            type: string
+          required: true
+          description: List of sizes in the format 'width,height' (e.g., '200,200').
+      responses:
+        200:
+          description: A JSON object with the paths of resized images.
+          schema:
+            type: object
+            properties:
+              resized_images:
+                type: array
+                items:
+                  type: string
+                  description: Path to the resized image.
+        400:
+          description: Bad request (e.g., missing file or sizes)
+        500:
+          description: Internal server error
