@@ -170,8 +170,8 @@ def convert_image():
                     # Save resized image to the output folder
                     resized_img.save(output_path, format=output_format.upper())
 
-                    # Add the image to the ZIP file
-                    zip_file.write(output_path, arcname=output_file_name)
+                    arch_filename = f"icon{size[0]}.{output_format.lower()}"
+                    zip_file.write(output_path, arcname=arch_filename)
 
                     os.remove(output_path)
 
