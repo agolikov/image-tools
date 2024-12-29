@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for
+from flask import Flask, request, jsonify, redirect, render_template, send_file, url_for, send_from_directory
 from PIL import Image
 from flasgger import Swagger
 import os
@@ -6,13 +6,14 @@ import zipfile
 import io
 from werkzeug.utils import secure_filename
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 swagger = Swagger(app, template_file='swagger.yaml')
 
 # Configuration
-UPLOAD_FOLDER = "data/uploads"
-OUTPUT_FOLDER = "data/output"
-THUMBNAIL_FOLDER = "data/thumbnails"
+UPLOAD_FOLDER = "static/uploads"
+OUTPUT_FOLDER = "static/output"
+THUMBNAIL_FOLDER = "static/thumbnails"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 PRESET_SIZES = [
     (16, 16),
     (32, 32),
@@ -29,6 +30,47 @@ os.makedirs(THUMBNAIL_FOLDER, exist_ok=True)
 
 uploaded_image_name = None
 
+
+def allowed_file(filename):
+    """
+    Check if the uploaded file has a valid image extension.
+    """
+    if '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
+        return True
+    return False
+
+
+def is_image(file_path):
+    """
+    Try opening the file with PIL to check if it's a valid image.
+    """
+    try:
+        with Image.open(file_path) as img:
+            img.verify()  # This will raise an exception if the file is not a valid image
+        return True
+    except (IOError, SyntaxError):
+        return False
+
+def get_unique_filename(upload_folder, filename):
+    """
+    Check if the file already exists in the upload folder and add a counter to the filename if necessary.
+    """
+    # Split the file name into name and extension
+    name, extension = os.path.splitext(filename)
+
+    # Generate the full path of the file
+    full_path = os.path.join(upload_folder, filename)
+
+    # Check if the file already exists and add a counter to the filename
+    counter = 1
+    while os.path.exists(full_path):
+        # Generate a new filename with a counter
+        filename = f"{name}_{counter}{extension}"
+        full_path = os.path.join(upload_folder, filename)
+        counter += 1
+
+    return filename
+
 @app.route('/')
 def index():
     """
@@ -37,16 +79,14 @@ def index():
     global uploaded_image_name
     # Get list of processed zip files for the history
     history_files = [f for f in os.listdir(OUTPUT_FOLDER) if f.endswith('.zip')]
-    history_thumbnails = [f for f in os.listdir(THUMBNAIL_FOLDER) if f.endswith('.png')]
-
-    # Create history entries with corresponding zip and thumbnail file paths
     history_entries = []
+
     for zip_file in history_files:
         zip_name = zip_file
         thumbnail_name = f"thumbnail_{zip_file}.png"
         history_entries.append({
             'zip_file': zip_name,
-            'thumbnail': thumbnail_name
+            'thumbnail_url': 'thumbnails/' + thumbnail_name
         })
 
     return render_template(
@@ -71,13 +111,23 @@ def upload_image():
     if image_file.filename == '':
         return redirect(url_for('index'))
 
-    filename = secure_filename(image_file.filename)
+    if not allowed_file(image_file.filename):
+        return jsonify({"error": "Invalid file format. Only image files are allowed."}), 400
+
+    # Get the unique filename
+    unique_filename = get_unique_filename(UPLOAD_FOLDER, image_file.filename)
+
+    filename = secure_filename(unique_filename)
     uploaded_image_name = filename  # Store for preview
 
     file_path = os.path.join(UPLOAD_FOLDER, filename)
 
     # Save the file
     image_file.save(file_path)
+
+    if not is_image(file_path):
+        os.remove(file_path)  # Delete the invalid image file
+        return jsonify({"error": "Uploaded file is not a valid image."}), 400
 
     return redirect(url_for('index'))
 
@@ -123,6 +173,8 @@ def convert_image():
                     # Add the image to the ZIP file
                     zip_file.write(output_path, arcname=output_file_name)
 
+                    os.remove(output_path)
+
                     # If this is the 128x128 size, create the thumbnail
                     if size == (128, 128):
                         thumbnail_image = resized_img
@@ -166,7 +218,6 @@ def delete_file(filename):
         os.remove(thumbnail_path)
 
     return redirect(url_for('index'))
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5050)

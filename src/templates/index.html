@@ -65,15 +65,16 @@
         <div class="mt-5">
             <h3>Conversion History:</h3>
             <ul class="list-group">
-                {% for entry in history_entries %}
+    {% for entry in history_entries %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <img src="{{ url_for('static', filename='thumbnails/' + entry.thumbnail) }}" alt="Thumbnail" class="img-thumbnail me-3" width="50">
+
+                <img src="{{ url_for('static', filename=entry.thumbnail_url) }}" alt="Thumbnail" class="img-thumbnail me-3" width="120" height="120">
                     {{ entry.zip_file }}
-                    <a href="{{ url_for('delete_file', filename=entry.zip_file) }}" class="btn btn-danger btn-sm">Delete</a>
-                    <a href="{{ url_for('static', filename='output/' + entry.zip_file) }}" class="btn btn-primary btn-sm" download>Download</a>
-                </li>
-                {% endfor %}
-            </ul>
+                <a href="{{ url_for('delete_file', filename=entry.zip_file) }}" class="btn btn-danger btn-sm">Delete</a>
+                 <a href="{{ url_for('static', filename='output/' + entry.zip_file) }}" class="btn btn-primary btn-sm" download>Download</a>
+            </li>
+        {% endfor %}
+    </ul>
         </div>
     </div>
 </body>
